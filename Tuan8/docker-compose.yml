@@ -1,0 +1,104 @@
+version: '3.8'
+services:
+  eureka-server:
+    image: eureka-server
+    build:
+      context: ./eureka-server
+    ports:
+      - "8761:8761"
+
+  api-gateway:
+    image: api-gateway
+    build:
+      context: ./api-gateway
+    ports:
+      - "8080:8080"
+    depends_on:
+      - eureka-server
+
+  product-service:
+    image: product-service
+    build:
+      context: ./product-service
+    ports:
+      - "8081:8081"
+    depends_on:
+      - product-db
+      - kafka
+      - eureka-server
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://localhost:3306/week8_productdb
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+
+  order-service:
+    image: order-service
+    build:
+      context: ./order-service
+    ports:
+      - "8082:8082"
+    depends_on:
+      - order-db
+      - kafka
+      - eureka-server
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://localhost:3306/week8_orderdb
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+
+  customer-service:
+    image: customer-service
+    build:
+      context: ./customer-service
+    ports:
+      - "8083:8083"
+    depends_on:
+      - customer-db
+      - eureka-server
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://localhost:3306/week8_customerdb
+
+  product-db:
+    image: postgres:14
+    environment:
+      POSTGRES_DB: product_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5433:5432"
+
+  order-db:
+    image: postgres:14
+    environment:
+      POSTGRES_DB: order_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5434:5432"
+
+  customer-db:
+    image: postgres:14
+    environment:
+      POSTGRES_DB: customer_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5435:5432"
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:latest
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+
+  kafka:
+    image: confluentinc/cp-kafka:latest
+    depends_on:
+      - zookeeper
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    ports:
+      - "9092:9092"
